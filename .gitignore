@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+results/
+uploads/
+.DS_Store
+jobs.json
+.venv/
+temp
+gemini_api_key.txt
+pdf_jobs

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <div class="nav">
+    <a href="/">홈</a>
+    <a href="/jobs">작업 목록</a>
+    </div>
+    <h2>PDF 파일 업로드</h2>
+    <form id="uploadForm" method="post" enctype="multipart/form-data" action="/upload" style="display:flex;flex-direction:column;gap:10px;">
+        <input type="file" name="file" id="fileInput" accept="application/pdf" required>
+        <input type="text" name="filename" id="filenameInput" placeholder="저장할 파일명(선택)" style="width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:6px;">
+        <input type="submit" value="업로드" style="margin-top:4px;">
+    </form>
+    <div style="color:#888; font-size:0.95em; margin-top:10px; text-align:center;">업로드 후 자동으로 상태 페이지로 이동합니다.</div>
+    <div id="uploadStatus" style="display:none; margin-top:24px; text-align:center;">
+        <span style="font-size:1.1em; color:#2563eb; font-weight:bold;">업로드중입니다.</span>
+        <div class="progress-wrapper">
+            <div id="progressBar" class="progress-bar"></div>
+        </div>
+        <span id="progressText" style="font-size:0.98em;color:#444;"></span>
+    </div>
+</div>
+{% endblock %}
+<script>
+const form = document.getElementById('uploadForm');
+const statusDiv = document.getElementById('uploadStatus');
+const progressBar = document.getElementById('progressBar');
+const progressText = document.getElementById('progressText');
+const fileInput = document.getElementById('fileInput');
+const filenameInput = document.getElementById('filenameInput');
+
+fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0 && !filenameInput.value.trim()) {
+        const raw = fileInput.files[0].name;
+        const base = raw.toLowerCase().endsWith('.pdf') ? raw.slice(0,-4) : raw;
+        filenameInput.value = base;
+    }
+});
+form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    statusDiv.style.display = 'block';
+    const formData = new FormData(form);
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', form.action, true);
+    xhr.upload.onprogress = function(e) {
+        if (e.lengthComputable) {
+            const percent = Math.round((e.loaded / e.total) * 100);
+            progressBar.style.width = percent + '%';
+            progressText.textContent = percent + '%';
+        }
+    };
+    xhr.onload = function() {
+        if (xhr.status === 200 || (xhr.status >= 300 && xhr.status < 400)) {
+            window.location.href = xhr.responseURL;
+        } else {
+            progressText.textContent = '업로드 실패';
+            progressBar.style.background = '#ef4444';
+        }
+    };
+    xhr.onerror = function() {
+        progressText.textContent = '업로드 오류';
+        progressBar.style.background = '#ef4444';
+    };
+    xhr.send(formData);
+});
+</script>

@@ -1,0 +1,164 @@
+/* Basic styling for PDF to Markdown service */
+:root {
+  /* 색상 변수 (필요시 확장) */
+  --bg:#f6f8fa;
+  --panel:#ffffff;
+  --primary:#2563eb;
+  --primary-dark:#1e40af;
+  --accent:#10b981;
+  --accent-dark:#059669;
+  --border:#ddd;
+  --text:#222;
+  --muted:#777;
+}
+
+body {
+  background: var(--bg);
+  font-family: 'Noto Sans KR', sans-serif;
+  margin: 0;
+  padding: 0;
+}
+  .container {
+    max-width: 1000px;
+    margin: 60px auto;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px #0001;
+    padding: 32px 28px;
+  }
+  h1, h2 {
+    text-align: center;
+    color: #2563eb;
+    margin-bottom: 32px;
+  }
+  .nav {
+    margin-bottom: 24px;
+    text-align: center;
+  }
+  .nav a {
+    margin: 0 10px;
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 1.1em;
+    transition: color 0.2s;
+  }
+  .nav a:hover {
+    text-decoration: underline;
+    color: #1e40af;
+  }
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    align-items: center;
+  }
+  input[type="file"] {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    width: 100%;
+    background: #f9fafb;
+  }
+  input[type="submit"], button.submit-btn {
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 0;
+    font-size: 1.1em;
+    cursor: pointer;
+    width: 100%;
+    transition: background 0.2s;
+  }
+  input[type="submit"]:hover, button.submit-btn:hover {
+    background: #1e40af;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 18px;
+  }
+  th, td {
+    padding: 10px 8px;
+    border-bottom: 1px solid #eee;
+    text-align: left;
+  }
+  th {
+    background: #f3f4f6;
+    color: #2563eb;
+  }
+  tr:hover {
+    background: #f9fafb;
+  }
+  .status {
+    font-weight: bold;
+  }
+  .result-text, .md-result {
+    background: #f3f4f6;
+    border-radius: 8px;
+    padding: 18px;
+    font-size: 0.92em;
+    color: #222;
+    word-break: break-word;
+    white-space: pre-wrap;
+    overflow-y: auto;
+    max-height: 640px;
+  }
+  .download-btn {
+    display: inline-block;
+    margin-top: 18px;
+    background: #10b981;
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: background 0.2s;
+  }
+  .download-btn:hover { background: var(--accent-dark); }
+  .loader {
+    width:48px;
+    height:48px;
+    margin:32px auto;
+    border:5px solid #e5e7eb; /* 회색 라인 */
+    border-top-color: var(--primary); /* 강조 색상 */
+    border-radius:50%;
+    animation:spin .9s linear infinite;
+    box-sizing:border-box;
+  }
+  @keyframes spin { to { transform: rotate(360deg);} }
+
+  /* 진행률 바 */
+  .progress-wrapper { width:100%; background:#eee; border-radius:8px; margin-top:12px; overflow:hidden; }
+  .progress-bar { height:18px; width:0%; background:var(--primary); border-radius:8px; transition: width .3s ease; }
+
+  /* Markdown code block 강조 */
+  pre, code { font-family: 'JetBrains Mono', 'Fira Code', monospace; }
+  pre {
+    background:#1e293b;
+    color:#f1f5f9;
+    padding:16px 18px;
+    border-radius:12px;
+    overflow-x:auto;
+    line-height:1.4;
+    font-size:0.85rem;
+    position:relative;
+  }
+  pre::-webkit-scrollbar { height:10px; }
+  pre::-webkit-scrollbar-track { background:#0f172a; }
+  pre::-webkit-scrollbar-thumb { background:#334155; border-radius:6px; }
+  pre::-webkit-scrollbar-thumb:hover { background:#2563eb; }
+
+  /* 단어 줄바꿈 개선 */
+  .md-result, .result-text { white-space: pre-wrap; word-wrap: break-word; }
+
+  /* 반응형 */
+  @media (max-width: 760px) {
+    .container { margin: 30px 12px; padding: 24px 20px; }
+    h1, h2 { font-size: 1.5em; }
+  }
+
+  /* 유틸 */
+  .muted { color:var(--muted); font-size:0.85em; }
+  .center { text-align:center; }

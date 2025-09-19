@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <div class="nav">
+    <a href="/">홈</a>
+    <a href="/upload">파일 업로드</a>
+    <a href="/jobs">작업 목록</a>
+    </div>
+    <h2>작업 대기/진행 중</h2>
+    <div class="info">파일명: {{ job.get('file_name','-') }}</div>
+    <div class="info">업로드: {{ job.get('created_at', '-') }}</div>
+    <div class="info">배치: {{ job.get('batches_done', 0) }} / {{ job.get('batches_total', '-') }}</div>
+    <div class="status">상태: {{ job['status'] }}</div>
+    <div class="loader"></div>
+    <div style="margin-top:12px;">
+        <div style="font-size:0.95em;color:#444;">진행률 {{ job.get('progress_percent', 0) or 0 }}%</div>
+        <div style="width:100%;background:#eee;border-radius:8px;overflow:hidden;height:12px;">
+            <div style="height:12px;background:#2563eb;width:{{ job.get('progress_percent', 0) or 0 }}%;transition:width .3s;"></div>
+        </div>
+    </div>
+    <div style="color:#888; font-size:0.98em; margin-top:6px;">페이지는 자동으로 새로고침됩니다.</div>
+    <meta http-equiv="refresh" content="3">
+</div>
+{% endblock %}
