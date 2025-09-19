@@ -112,7 +112,7 @@ def input_prompt_and_send(driver):
         ActionChains(driver).send_keys("\"[이미지 설명: 다양한 네트워크 접속 장치를 사용한 네트워크 구성도. 라우터 아래에 스위치 A와 B가 있고, 각 스위치 아래에 허브 1과 2가 연결되어 있다. 허브들은 각각 여러 컴퓨터에 연결되며, 브리지를 통해 두 네트워크 간의 무선 연결도 이루어진다.]\"").perform()
         ActionChains(driver).key_down(Keys.SHIFT).send_keys(Keys.ENTER).key_up(Keys.SHIFT).perform()
         ActionChains(driver).key_down(Keys.SHIFT).send_keys(Keys.ENTER).key_up(Keys.SHIFT).perform()
-        ActionChains(driver).send_keys("만약 이미지에 대한 식별이 있다면 적어줘.").perform()
+        ActionChains(driver).send_keys("만약 이미지에 대한 식별이 있다면 이미지 다음에 적어줘.").perform()
         ActionChains(driver).key_down(Keys.SHIFT).send_keys(Keys.ENTER).key_up(Keys.SHIFT).perform()
         ActionChains(driver).send_keys("\"[그림 2-9 접속 장치로 연결된 네트워크]\"").perform()
         ActionChains(driver).key_down(Keys.SHIFT).send_keys(Keys.ENTER).key_up(Keys.SHIFT).perform()
