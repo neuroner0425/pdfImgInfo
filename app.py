@@ -201,18 +201,16 @@ def generate_for_batch(model, batch_paths: List[str]):
     if not images:
         print("[WARN] 배치 이미지 로드 실패")
         return None
-    from time import sleep
-    sleep(10000)  # API 과부하 방지
     
-    # parts = [prompt] + images
-    # try:
-    #     resp = model.generate_content(parts, safety_settings={})
-    #     resp.resolve()
-    #     txt = resp.text or ""
-    #     return txt.strip()
-    # except Exception as e:
-    #     print(f"[ERROR] API 호출 실패 (배치 시작: {os.path.basename(file_names_sorted[0])}): {e}")
-    #     return None
+    parts = [prompt] + images
+    try:
+        resp = model.generate_content(parts, safety_settings={})
+        resp.resolve()
+        txt = resp.text or ""
+        return txt.strip()
+    except Exception as e:
+        print(f"[ERROR] API 호출 실패 (배치 시작: {os.path.basename(file_names_sorted[0])}): {e}")
+        return None
 
     # (전역 sanitize_filename 사용)
 # ---------------- 파일명 처리 & PDF 메타 유틸 ----------------
