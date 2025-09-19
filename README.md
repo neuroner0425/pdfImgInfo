@@ -31,7 +31,7 @@ FastAPI 기반 비동기 PDF → Markdown 변환 서비스입니다. 업로드�
 ## 설치 및 준비
 ### 1. 저장소 클론 & 진입
 ```bash
-git clone <your-repo-url>.git
+git clone https://github.com/neuroner0425/pdfImgInfo.git
 cd imageIncludeFileTransFormer
 ```
 
