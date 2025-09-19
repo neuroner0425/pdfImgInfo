@@ -1,38 +1,39 @@
-"""main_web.py
+"""PDF -> Markdown 비동기 변환 서비스 (FastAPI)
 
-FastAPI 기반 PDF -> Markdown 변환 비동기 서비스.
+핵심 기능:
+    - 업로드된 PDF 를 페이지 단위 JPEG 로 변환 (pdf2image / poppler 필요)
+    - Gemini 모델에 페이지 이미지를 배치 호출하여 원문 텍스트 + 이미지 설명을 Markdown 코드블록으로 구성
+    - 작업 큐 + 워커 스레드(기본 4) 로 비동기 처리 및 상태/결과 조회, 다운로드 지원
 
-기능 요약:
-1. PDF 업로드 -> 작업 등록 (비동기 처리)
-2. PDF 각 페이지 이미지를 Gemini 배치 호출하여 Markdown 생성
-3. 작업 상태 조회 (대기/처리중/완료/실패)
-4. 결과 Markdown 다운로드
+주요 엔드포인트:
+    POST /upload          : PDF 업로드 (multipart/form-data, 필드명 file)
+    GET  /job/{job_id}    : 작업 상태 (HTML/JSON)
+    GET  /jobs            : 전체 작업 목록
+    GET  /download/{job_id}: 완료 결과 Markdown 다운로드
+    GET  /healthz         : 헬스 체크
 
-환경 변수 / 설정:
-- GEMINI_API_KEY : Gemini API 키 (또는 gemini_api_key.txt 파일 사용)
-- BATCH_SIZE (기본 10)
-- RETRY (기본 2) : 배치 실패 재시도 횟수
-- DPI (기본 200)
-- KEEP_IMAGES ("1" 이면 변환된 이미지를 temp 디렉토리 유지)
+환경 변수:
+    GEMINI_API_KEY          (또는 gemini_api_key.txt 파일로 키 제공)
+    BATCH_SIZE=10           (배치당 페이지 수)
+    RETRY=2                 (배치 실패 재시도 횟수)
+    DPI=200                 (PDF -> 이미지 렌더링 해상도)
+    WORKER_CONCURRENCY=4    (동시 워커 스레드 수)
+    KEEP_IMAGES=1           (설정 시 변환된 페이지 이미지 보존)
 
-실행:
-    uvicorn main_web:app --reload --port 8010
+동작 흐름 요약:
+    1) 업로드 -> pdf_jobs/<job_id>/input.pdf 저장 & 작업 메타 등록
+    2) task_queue 에 job_id push → worker_loop 가 run_job 수행
+    3) run_job: PDF→이미지 → batch 호출(Gemini) → 결과 병합 → result_<job_id>.md 생성
+    4) /job /download 등을 통해 상태 및 결과 접근
+    5) 서버 재기동 시 미완료(PENDING/RUNNING) 작업 자동 재큐잉
 
-의존성:
-    pip install fastapi uvicorn pdf2image pillow google-generativeai
-    (macOS) brew install poppler
+로컬 실행 예:
+    uvicorn app:app --reload --port 8000
 
-엔드포인트:
-    POST   /upload        -> multipart/form-data 로 pdf 업로드 (필드명: file)
-    GET    /job/{job_id}  -> JSON/HTML 상태 조회
-    GET    /download/{job_id} -> 결과 Markdown 다운로드
-
-동시 처리(작업 소비) 모델:
-        - 내부 큐(task_queue)에 업로드 시 job_id를 넣고, WORKER_CONCURRENCY 개수(기본 4)의
-            worker_loop 스레드가 병렬로 소비하여 run_job 수행.
-        - 환경변수 WORKER_CONCURRENCY 로 조정 (예: export WORKER_CONCURRENCY=2)
-        - 종료 시 각 워커마다 sentinel(None)을 큐에 주입하여 안전하게 중단.
-
+주의:
+    - macOS: poppler 설치 필요 (brew install poppler)
+    - 대용량 PDF 성능/비용 튜닝: BATCH_SIZE, WORKER_CONCURRENCY 조정
+    - Gemini 호출 실패 시 배치 단위 RETRY 수행; 일부 배치 실패해도 전체 문서 생성은 계속 진행
 """
 from __future__ import annotations
 import os
@@ -535,4 +536,4 @@ async def shutdown_event():
 
 if __name__ == '__main__':
     import uvicorn
-    uvicorn.run("app:app", host="0.0.0.0", port=8010, reload=True)
+    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
