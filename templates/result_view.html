@@ -14,10 +14,14 @@
       <div class="info">완료: {{ job.get('completed_at','-') }}</div>
       <div class="info">배치: {{ job.get('batches_done',0) }} / {{ job.get('batches_total','-') }}</div>
       {% if job['status'] == '완료' %}
-        <div style="margin:16px 0;">
+        <div style="margin:16px 0; display:flex; gap:12px; flex-wrap:wrap;">
             <a class="download-btn" href="/download/{{ job['job_id'] }}">Markdown 다운로드</a>
+            <button type="button" class="download-btn" style="background:#6366f1;" onclick="toggleRaw()">원문 토글</button>
         </div>
-        <div class="result-text">{{ markdown_text | safe }}</div>
+        {% if markdown_html %}
+          <div class="md-preview" id="md-preview">{{ markdown_html | safe }}</div>
+        {% endif %}
+        <div class="result-text" id="raw-md" style="display:none;">{{ markdown_text | safe }}</div>
       {% elif job['status'] == '실패' %}
         <div style="margin-top:16px;color:#dc2626;font-weight:bold;">실패: {{ job.get('error','원인 미상') }}</div>
       {% else %}
@@ -27,4 +31,14 @@
       <div style="color:#dc2626;font-weight:bold;">작업 정보를 찾을 수 없습니다.</div>
     {% endif %}
 </div>
+<script>
+function toggleRaw() {
+  const raw = document.getElementById('raw-md');
+  const preview = document.getElementById('md-preview');
+  if (!raw) return;
+  const showing = raw.style.display === 'block';
+  raw.style.display = showing ? 'none' : 'block';
+  if (preview) preview.style.display = showing ? 'block' : 'none';
+}
+</script>
 {% endblock %}

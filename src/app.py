@@ -15,6 +15,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 
 from .config import BATCH_SIZE, RETRY, STORAGE_DIR, TEMPLATE_DIR, STATIC_DIR
+import markdown as md
 from .worker import jobs, jobs_lock, task_queue, JobStatus, requeue_pending, shutdown_workers
 from .services.pdf_service import quick_pdf_page_count
 from .utils_text import sanitize_filename
@@ -118,14 +119,27 @@ async def job_page(request: Request, job_id: str):
     elif job['status'] == JobStatus.DONE:
         # Markdown 내용 로드
         md_text = ''
+        html_converted = ''
         result_path = job.get('result_md')
         if result_path and os.path.exists(result_path):
             try:
                 with open(result_path, 'r', encoding='utf-8') as rf:
                     md_text = rf.read()
+                # Markdown -> HTML 변환 (테이블/코드블럭/목차 확장)
+                html_converted = md.markdown(
+                    md_text,
+                    extensions=[
+                        'extra',          # tables, fenced code 등
+                        'admonition',     # 추가 블록
+                        'codehilite',     # 코드 하이라이트 (추가 CSS 필요 가능)
+                        'tables',
+                        'fenced_code'
+                    ]
+                )
             except Exception as e:
                 md_text = f"(결과 파일 읽기 실패: {e})"
-        return templates.TemplateResponse('result_view.html', { 'request': request, 'job': job, 'markdown_text': md_text })
+                html_converted = ''
+        return templates.TemplateResponse('result_view.html', { 'request': request, 'job': job, 'markdown_text': md_text, 'markdown_html': html_converted })
     else:  # FAILED
         return templates.TemplateResponse('result_view.html', { 'request': request, 'job': job, 'markdown_text': '' })
 
