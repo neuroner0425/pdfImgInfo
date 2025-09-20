@@ -5,6 +5,7 @@ from typing import List
 
 from pdf2image import convert_from_path
 from PIL import Image
+import fitz
 
 def pdf_to_images(pdf_path: str, output_dir: str, dpi: int) -> List[str]:
     try:
@@ -22,6 +23,19 @@ def pdf_to_images(pdf_path: str, output_dir: str, dpi: int) -> List[str]:
             out_list.append(out_path)
         except Exception as e:
             print(f"[WARN] 페이지 저장 실패 {i+1}: {e}")
+    return out_list
+
+def extract_text_by_page(pdf_path) -> List[str]:
+    out_list: List[str] = []
+    try:
+        doc = fitz.open(pdf_path)
+        for page_num in range(doc.page_count):
+            page = doc.load_page(page_num)
+            text = page.get_text()
+            out_list.append(text)
+        doc.close()
+    except Exception as e:
+        print(f"[WARN] 페이지에서 텍스트 추출 실패: {e}")
     return out_list
 
 def load_images(paths: List[str]):
