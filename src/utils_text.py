@@ -30,8 +30,6 @@ def ensure_code_fence(text: str) -> str:
     if not t:
         return "```\n(빈 결과)\n```"
     if t.startswith('```'):
-        # 시작은 fence, 끝이 없으면 추가
-        if not t.rstrip().endswith('```'):
-            t = t.rstrip() + '\n```'
+        t = t.strip('`').strip()
         return t
-    return f"```\n{t}\n```"
+    return f"\n{t}\n"
