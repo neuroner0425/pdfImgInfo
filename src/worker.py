@@ -13,7 +13,7 @@ from typing import Dict, Any, List
 
 from .config import DPI, KEEP_IMAGES, BATCH_SIZE, RETRY, STORAGE_DIR, WORKER_CONCURRENCY
 from .job_persist import load_jobs as _load_jobs_json, save_jobs as _save_jobs_json
-from .services.pdf_service import pdf_to_images
+from .services.pdf_service import pdf_to_images, extract_text_by_page
 from .services.gemini_service import init_model, generate_for_batch
 from .utils_text import natural_sort_key, ensure_code_fence
 
@@ -45,13 +45,17 @@ def run_job(job_id: str):
         temp_dir_created = True
     image_paths = pdf_to_images(pdf_path, img_dir, dpi=DPI)
     image_paths.sort(key=lambda p: natural_sort_key(os.path.basename(p)))
+    
+    pdf_texts = extract_text_by_page(pdf_path)
     results = []
     for i in range(0, len(image_paths), batch_size):
-        batch = image_paths[i:i+batch_size]
+        batch_img = image_paths[i:i+batch_size]
+        batch_pdf_texts = pdf_texts[i:i+batch_size]
+        prompt = "다음은 PyMuPDF로 추출한 슬라이드별 텍스트입니다.\n\n" + "".join(f"--- 페이지 {i+j+1} --- \n{txt}\n\n" for j, txt in enumerate(batch_pdf_texts) if txt.strip())
         attempt = 0
         batch_text = None
         while attempt <= retry:
-            batch_text = generate_for_batch(model, batch)
+            batch_text = generate_for_batch(model, batch_img, prompt=prompt)
             if batch_text:
                 break
             attempt += 1

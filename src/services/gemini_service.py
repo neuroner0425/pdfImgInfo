@@ -5,7 +5,7 @@ from typing import List, Optional
 
 import google.generativeai as genai
 
-from ..config import MODEL_NAME_CANDIDATES, BASE_INSTRUCTIONS, PROJECT_ROOT
+from ..config import MODEL_NAME_CANDIDATES, BASE_INSTRUCTIONS, PROJECT_ROOT, GENERATION_CONFIG
 from .pdf_service import load_images
 from ..utils_text import natural_sort_key
 
@@ -42,8 +42,8 @@ def init_model():
     last_error = None
     for name in MODEL_NAME_CANDIDATES:
         try:
-            m = genai.GenerativeModel(name)
-            _ = m.generate_content(["ping test"], safety_settings={})
+            m = genai.GenerativeModel(name, system_instruction=BASE_INSTRUCTIONS, generation_config=GENERATION_CONFIG)
+            # _ = m.generate_content(["ping test"], safety_settings={})
             _model_cached = m
             print(f"[INFO] 모델 사용: {name}")
             return _model_cached
@@ -53,23 +53,37 @@ def init_model():
             continue
     raise RuntimeError(f"모든 모델 초기화 실패: {last_error}")
 
-def build_batch_prompt(batch_file_names: List[str]) -> str:
-    header = "이 배치에 포함된 이미지 파일 이름 (참고용):\n" + "\n".join(f"- {os.path.basename(f)}" for f in batch_file_names) + "\n\n"
-    return header + BASE_INSTRUCTIONS
+def generate_for_batch(model: genai.GenerativeModel, batch_paths: List[str], prompt: str = ""):
+    """
+    주어진 이미지 파일 경로 리스트(batch_paths)에 대해 이미지를 로드하고,
+    지정된 모델(model)을 사용하여 배치 프롬프트와 함께 Gemini API에 요청을 보낸 후 결과 텍스트를 반환합니다.
 
-def generate_for_batch(model, batch_paths: List[str]):
+    Args:
+        model: Gemini API를 호출할 모델 인스턴스.
+        batch_paths (List[str]): 처리할 이미지 파일 경로들의 리스트.
+
+    Returns:
+        str | None: 모델의 응답 텍스트(성공 시), 실패 시 None.
+    """
     file_names_sorted = sorted(batch_paths, key=natural_sort_key)
-    prompt = build_batch_prompt(file_names_sorted)
-    images = load_images(file_names_sorted)
+    images: list = load_images(file_names_sorted)
+    
     if not images:
         print("[WARN] 배치 이미지 로드 실패")
         return None
     parts = [prompt] + images
     try:
-        resp = model.generate_content(parts, safety_settings={})
-        resp.resolve()
+        import time
+        resp = model.generate_content(contents=parts, safety_settings={})
+        # resp = ""
+        try:
+            resp.resolve()
+        except Exception as e:
+            batch_start = os.path.basename(file_names_sorted[0]) if file_names_sorted else "(빈 배치)"
+            print(f"[ERROR] API 호출 실패 (배치 시작: {batch_start}): {e}")
+            return None
         txt = resp.text or ""
         return txt.strip()
     except Exception as e:
-        print(f"[ERROR] API 호출 실패 (배치 시작: {os.path.basename(file_names_sorted[0])}): {e}")
-        return None
+            print(f"[ERROR] API 호출 실패 (배치 시작: {os.path.basename(file_names_sorted[0])}): {e}")
+            return None
