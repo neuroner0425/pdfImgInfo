@@ -17,31 +17,80 @@ FastAPI 기반 비동기 PDF → Markdown 변환 서비스입니다. 업로드�
 - 표준 라이브러리: `threading`, `queue`, `tempfile`, `uuid`, `datetime` 등
 
 ## 디렉토리 구조 (요약)
+리팩터링 후 모듈화된 구조:
 ```
 .
-├─ app.py                # 메인 애플리케이션 (엔드포인트 + 워커 로직)
-├─ job_persist.py        # 작업 메타 저장/로드 (JSON 직렬화) - 없을 경우 안전 실패
-├─ templates/            # Jinja2 템플릿 (상태/결과/업로드 UI)
-├─ static/               # 정적 파일 (CSS 등)
-├─ pdf_jobs/             # 실행 중/완료된 작업 저장 디렉토리 (생성됨)
+├─ app.py                     # FastAPI 엔드포인트 (비즈니스 로직 위임)
+├─ config.py                  # 환경 변수 & 경로 상수 & 기본 지시문
+├─ worker.py                  # 워커/큐/실행 흐름 (run_job, requeue, shutdown)
+├─ services/
+│  ├─ pdf_service.py          # PDF → 이미지 렌더링 / 페이지 수 추정 / 이미지 로드
+│  └─ gemini_service.py       # Gemini 모델 초기화 및 배치 호출 헬퍼
+├─ utils_text.py              # 파일명 정규화, natural sort, 코드펜스 보장
+├─ job_persist.py             # 작업 메타 JSON 저장/로드 (원자적 쓰기)
+├─ templates/                 # Jinja2 템플릿 (상태/결과/업로드 UI)
+├─ static/                    # 정적 파일 (CSS 등)
+├─ pdf_jobs/                  # 작업별 워킹 디렉토리 (실행 중 생성)
 ├─ requirements.txt
 └─ README.md
 ```
 
+핵심 책임 분리:
+## 디렉토리 구조 (요약 - 최신)
+최근 경로 정책 변경: 실행 산출물 및 템플릿/정적 자산은 "루트" 경로, Python 애플리케이션 소스는 `src/` 하위에 위치합니다.
+```
+.
+├─ pdf_jobs/                  # 작업별 워킹 디렉토리 (실행 중 동적 생성/사용)
+├─ templates/                 # Jinja2 템플릿 (HTML UI)
+├─ static/                    # 정적 파일 (CSS 등)
+├─ gemini_api_key.txt         # (선택) API 키 파일
+├─ src/
+│  ├─ app.py                  # FastAPI 엔드포인트 (비즈니스 로직 위임)
+│  ├─ config.py               # 환경 변수 & 경로 상수 & 기본 지시문 (루트 경로 기준)
+│  ├─ worker.py               # 워커/큐/실행 흐름 (run_job, requeue, shutdown)
+│  ├─ job_persist.py          # 작업 메타 JSON 저장/로드 (원자적 쓰기)
+│  ├─ utils_text.py           # 파일명 정규화, natural sort, 코드펜스 보장
+│  └─ services/
+│     ├─ pdf_service.py       # PDF → 이미지 렌더링 / 페이지 수 추정 / 이미지 로드
+│     └─ gemini_service.py    # Gemini 모델 초기화 및 배치 호출 헬퍼 (루트 키 파일 우선 탐색)
+├─ requirements.txt
+└─ README.md
+```
+
+핵심 책임 분리(불변):
+- `src/app.py`: HTTP 계층 (입력 검증, JSON/HTML 응답, 작업 등록)
+- `src/worker.py`: 작업 상태 전환/실행 + 재기동 복구
+- `src/services/`: 도메인 기능 (PDF 처리, Gemini 호출)
+- `src/utils_text.py`: 순수 유틸
+- `src/config.py`: 경로/환경값 관리 (현재는 프로젝트 루트 기준으로 `pdf_jobs/`, `templates/`, `static/`를 바라봄)
+
 ## 설치 및 준비
 ### 1. 저장소 클론 & 진입
 ```bash
+## 실행
+경로 정책 변경(소스가 `src/` 하위)에 따라 아래 명령을 사용하세요.
+```bash
+# 가상환경 활성화 후 프로젝트 루트에서:
+uvicorn src.app:app --reload --port 8000
+
+# 또는 제공된 스크립트
+./start.sh
+```
 git clone https://github.com/neuroner0425/pdfImgInfo.git
 cd imageIncludeFileTransFormer
-```
 
 ### 2. Python 환경 (권장)
 ```bash
-python -m venv .venv
+## Gemini API Key 설정
+아래 중 하나 선택 (우선순위: 환경변수 > 루트 `gemini_api_key.txt`):
+```bash
+export GEMINI_API_KEY="YOUR_API_KEY"
+# 또는 프로젝트 루트에 gemini_api_key.txt 파일 생성 후 키 한 줄 기입
+```
 source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
 ```
 
-### 3. 필수 시스템 의존 (Poppler)
+| `GEMINI_API_KEY` | (없음) | Gemini API 키 (없으면 루트 `gemini_api_key.txt` 탐색) |
 macOS:
 ```bash
 brew install poppler
@@ -55,9 +104,6 @@ sudo apt-get update && sudo apt-get install -y poppler-utils
 ```bash
 pip install -r requirements.txt
 ```
-
-### 5. Gemini API Key 설정
-아래 중 하나 선택:
 - 환경변수:
   ```bash
   export GEMINI_API_KEY="YOUR_API_KEY"
@@ -66,16 +112,23 @@ pip install -r requirements.txt
 
 ## 실행
 ```bash
-uvicorn app:app --reload --port 8000
-```
-
 브라우저에서:
-- 업로드 UI: http://localhost:8000/upload
-- 작업 상태: http://localhost:8000/job/<job_id>
-- 전체 목록: http://localhost:8000/jobs
-- 결과 다운로드: http://localhost:8000/download/<job_id>
+## 한계 / 향후 개선 아이디어
+- 배치별 부분 실패 재처리 API
+- 페이지 단위 진행률
+- 결과 Markdown 내 OCR/표 구조 재현
+- 결과 및 작업 디렉토리 TTL/청소 스케줄러
+- 구조화 로깅(JSON), OpenTelemetry 추적
+- Prometheus 메트릭 (모델 호출 시간/에러 율)
 
-## 환경 변수
+## (마이그레이션 참고)
+기존 버전에서 `src/templates/`, `src/static/`, `src/pdf_jobs/`를 사용하던 프로젝트라면 현재 실행 시 `src/config.py` 내 마이그레이션 로직이 루트 디렉토리로 자동 이동을 시도합니다. 충돌(동일 파일명) 발생 시 자동 덮어쓰지 않으므로, 필요 시 수동 정리:
+```bash
+mv src/templates/* templates/ 2>/dev/null || true
+mv src/static/* static/ 2>/dev/null || true
+mv src/pdf_jobs/* pdf_jobs/ 2>/dev/null || true
+find src -type d -empty -maxdepth 1 -name 'templates' -delete 2>/dev/null || true
+```
 | 이름 | 기본값 | 설명 |
 |------|--------|------|
 | `GEMINI_API_KEY` | (없음) | Gemini API 키 또는 `gemini_api_key.txt` 사용 |
@@ -121,4 +174,6 @@ uvicorn app:app --reload --port 8000
 - 진행률 보다 세밀한 (페이지 단위) 추적
 - 결과 Markdown 내 이미지 OCR 추출/테이블 구조 재현
 - 저장 정책(완료 후 N시간 보관) 자동 정리 스케줄러
+ - 서비스/워커에 구조화 로깅(json) 적용 및 OpenTelemetry 추적
+ - 모델 호출 시간/오류 통계 메트릭 (Prometheus) 노출
 
