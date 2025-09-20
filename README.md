@@ -9,7 +9,7 @@ PDF속 시각자료를 텍스트로 바꿔주는 서비스입니다. 업로드�
 ## 환경 설정
 ### 1. 저장소 클론
 ```bash
-git clone https://github.com/neuroner0425/pdfImgInfo.git
+git clone https://github.com/neuroner0425/vimatrax.git
 cd imageIncludeFileTransFormer
 ```
 

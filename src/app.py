@@ -26,7 +26,7 @@ async def lifespan(app: FastAPI):
     yield
     shutdown_workers()
 
-app = FastAPI(title="PDF to Markdown Service", lifespan=lifespan)
+app = FastAPI(title="vimatrax", lifespan=lifespan)
 templates = Jinja2Templates(directory=TEMPLATE_DIR)
 templates.env.globals['datetime'] = datetime
 app.mount('/static', StaticFiles(directory=STATIC_DIR), name='static')
