@@ -59,3 +59,9 @@ def save_jobs(jobs: dict):
                 os.remove(tmp_path)
         except Exception:
             pass
+
+def batch_log(batch_num, batch_time):
+    """Append batch_num and batch_time to batch_log.txt."""
+    log_path = Path('batch_log.txt')
+    with log_path.open('a', encoding='utf-8') as f:
+        f.write(f"{batch_num},{batch_time}\n")

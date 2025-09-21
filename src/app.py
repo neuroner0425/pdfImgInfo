@@ -7,6 +7,8 @@ import os
 import uuid
 from datetime import datetime
 from typing import Optional
+import math
+import logging
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request
 from contextlib import asynccontextmanager
@@ -32,6 +34,29 @@ templates = Jinja2Templates(directory=TEMPLATE_DIR)
 templates.env.globals['datetime'] = datetime
 app.mount('/static', StaticFiles(directory=STATIC_DIR), name='static')
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
+
+class UvicornAccessFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:  # return True to keep, False to drop
+        try:
+            msg = record.getMessage()
+            # uvicorn access log lines typically contain the HTTP method and path like: '"GET /job/<id> '
+            if 'GET /job/' in msg or 'POST /job/' in msg:
+                return False
+        except Exception:
+            # on any unexpected issue, don't block the log
+            return True
+        return True
+
+# Attach filter to uvicorn access logger if present
+try:
+    _access_logger = logging.getLogger('uvicorn.access')
+    _access_logger.addFilter(UvicornAccessFilter())
+except Exception:
+    pass
+
 @app.post('/upload')
 async def upload_pdf(request: Request, file: UploadFile = File(...), batch_size: Optional[int] = None, retry: Optional[int] = None, filename: Optional[str] = None):
     if file.content_type not in ('application/pdf', 'application/octet-stream') and not file.filename.lower().endswith('.pdf'):
@@ -45,13 +70,14 @@ async def upload_pdf(request: Request, file: UploadFile = File(...), batch_size:
     pdf_path = os.path.join(work_dir, 'input.pdf')
     with open(pdf_path, 'wb') as f:
         f.write(data)
-    bsize = batch_size if batch_size and batch_size > 0 else BATCH_SIZE
     rtry = retry if retry is not None and retry >= 0 else RETRY
     original_name = file.filename or 'uploaded.pdf'
     user_base = filename if filename else original_name
     safe_name = sanitize_filename(user_base)
     # 페이지 수 / 예상 배치 수 선계산
     page_count = quick_pdf_page_count(pdf_path)
+    dynamic_batch_size = math.ceil(page_count / (math.ceil(page_count / BATCH_SIZE))) if page_count and page_count > 0 else BATCH_SIZE
+    bsize = batch_size if batch_size and batch_size > 0 else dynamic_batch_size
     pre_batches_total = (page_count + bsize - 1)//bsize if page_count else None
     with jobs_lock:
         jobs[job_id] = {

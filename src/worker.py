@@ -12,7 +12,7 @@ from datetime import datetime
 from typing import Dict, Any, List
 
 from .config import DPI, KEEP_IMAGES, BATCH_SIZE, RETRY, STORAGE_DIR, WORKER_CONCURRENCY
-from .job_persist import load_jobs as _load_jobs_json, save_jobs as _save_jobs_json
+from .job_persist import load_jobs as _load_jobs_json, save_jobs as _save_jobs_json, batch_log
 from .services.pdf_service import pdf_to_images, extract_text_by_page
 from .services.gemini_service import init_model, generate_for_batch
 from .utils_text import natural_sort_key, ensure_code_fence
@@ -30,12 +30,15 @@ task_queue: "queue.Queue[str]" = queue.Queue()
 worker_threads: List[threading.Thread] = []
 
 def run_job(job_id: str):
+    model = init_model()
+    started = datetime.now()
     with jobs_lock:
         job = jobs[job_id]
         pdf_path: str = job['pdf_path']
         batch_size: int = job['batch_size']
         retry: int = job['retry']
-    model = init_model()
+        jobs[job_id]['started_at'] = started.strftime('%Y-%m-%d %H:%M:%S')
+        jobs[job_id]['started_ts'] = started.timestamp()
     if KEEP_IMAGES:
         img_dir = os.path.join(job['work_dir'], 'images')
         os.makedirs(img_dir, exist_ok=True)
@@ -49,6 +52,7 @@ def run_job(job_id: str):
     pdf_texts = extract_text_by_page(pdf_path)
     results = []
     for i in range(0, len(image_paths), batch_size):
+        batch_start = datetime.now()
         batch_img = image_paths[i:i+batch_size]
         batch_pdf_texts = pdf_texts[i:i+batch_size]
         prompt = "다음은 PyMuPDF로 추출한 슬라이드별 텍스트입니다.\n\n" + "".join(f"--- 페이지 {i+j+1} --- \n{txt}\n\n" for j, txt in enumerate(batch_pdf_texts) if txt.strip())
@@ -68,12 +72,16 @@ def run_job(job_id: str):
         with jobs_lock:
             job = jobs.get(job_id)
             if job:
+                batch_end = datetime.now()
+                batch_duration = (batch_end - batch_start).total_seconds()
+                batch_log(len(results), batch_duration)
                 job['batches_done'] = job.get('batches_done', 0) + 1
                 job['batches_total'] = (len(image_paths) + batch_size - 1)//batch_size
                 _save_jobs_json(jobs)
     final_output = "\n\n---\n\n".join(results) + "\n"
     out_name = f"result_{job_id}.md"
     out_path = os.path.join(job['work_dir'], out_name)
+    end_time = datetime.now()
     with open(out_path, 'w', encoding='utf-8') as f:
         f.write(final_output)
     with jobs_lock:
@@ -81,7 +89,8 @@ def run_job(job_id: str):
         if job:
             job['status'] = JobStatus.DONE
             job['result_md'] = out_path
-            job['completed_at'] = datetime.now().isoformat(timespec='seconds')
+            job['completed_at'] = end_time.isoformat(timespec='seconds')
+            job['completed_ts'] = end_time.timestamp()
             _save_jobs_json(jobs)
     if temp_dir_created and not KEEP_IMAGES:
         try:
