@@ -74,7 +74,7 @@ def run_job(job_id: str):
             if job:
                 batch_end = datetime.now()
                 batch_duration = (batch_end - batch_start).total_seconds()
-                batch_log(len(results), batch_duration)
+                batch_log(batch_size, batch_duration)
                 job['batches_done'] = job.get('batches_done', 0) + 1
                 job['batches_total'] = (len(image_paths) + batch_size - 1)//batch_size
                 _save_jobs_json(jobs)

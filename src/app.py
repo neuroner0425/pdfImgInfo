@@ -36,8 +36,6 @@ app.mount('/static', StaticFiles(directory=STATIC_DIR), name='static')
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
-
 class UvicornAccessFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:  # return True to keep, False to drop
         try:
