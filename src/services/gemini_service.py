@@ -7,7 +7,7 @@ from google import genai, genai
 from google.genai import types
 from google.genai.types import GenerateContentConfig
 
-from ..config import MODEL_NAME_CANDIDATES, BASE_INSTRUCTIONS, PROJECT_ROOT, GEMINI_TEMPERATURE
+from ..config import MODEL_NAME_CANDIDATES, BASE_INSTRUCTIONS, PROJECT_ROOT
 from ..utils_text import natural_sort_key
 
 _model_cached: genai.Client = None
