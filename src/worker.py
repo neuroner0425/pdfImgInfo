@@ -54,8 +54,10 @@ def run_job(job_id: str):
     for i in range(0, len(image_paths), batch_size):
         batch_start = datetime.now()
         batch_img = image_paths[i:i+batch_size]
-        batch_pdf_texts = pdf_texts[i:i+batch_size]
-        prompt = "다음은 PyMuPDF로 추출한 슬라이드별 텍스트입니다.\n\n" + "".join(f"--- 페이지 {i+j+1} --- \n{txt}\n\n" for j, txt in enumerate(batch_pdf_texts) if txt.strip())
+        batch_pdf_texts = dict(list(pdf_texts.items())[i:i+batch_size])
+        prompt = ""
+        for page_num, text in batch_pdf_texts.items():
+            prompt += f"--- 페이지 {page_num} ---\n{text}\n\n"
         attempt = 0
         batch_text = None
         while attempt <= retry:

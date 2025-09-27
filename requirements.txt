@@ -2,7 +2,7 @@ fastapi
 uvicorn[standard]
 pdf2image
 Pillow
-google-generativeai
+google-genai
 python-multipart
 Jinja2
 markdown
